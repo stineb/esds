@@ -10,6 +10,9 @@ link-citations: yes
 description: "Text book and exercises. ETH, D-USYS, Fall semester 2020"
 ---
 
+# Foreword
+
+Some wise words.
 
 ```{r include=FALSE}
 # automatically create a bib database for R packages
