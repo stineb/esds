@@ -1,0 +1,249 @@
+# Data Wrangling
+
+## Aims
+
+- Data organisation principles, tidy data
+- Introduction to the [Tidyverse](https://www.tidyverse.org/) syntax in R.
+- Efficiently working with large environmental datasets and combining.
+
+## Contents
+
+- Variables in a dataframe: select, rename
+- Time: lubridate ([link](https://datacarpentry.org/R-ecology-lesson/02-starting-with-data.html#Formatting_Dates))
+- Variable (re-) definition: mutate
+- Aggregating: group_by, summarise, count, arrange
+- Cleaning (outliers, quality flags, ...) and gapfilling: filter
+- Combining: join_
+- Workflows: piping
+- purrr
+- purrr and mutate
+- Advanced data vis
+- Tidy data
+- Wide and long table formats: pivont_longer, ...
+- Factors, dimensions
+- Visualise ([link](https://datacarpentry.org/R-ecology-lesson/04-visualization-ggplot2.html))
+  - factors, boxplot
+  - mapping aesthetics: color, shape
+- Flat and nested data frames: tidyr
+
+## Prerequisites
+
+- Knowing how to read data into R
+- Access datasets 1 and 2
+- Possible to require additional dataset: SwissFACE (experimental data!)
+
+
+## Exercises
+
+- **Input**: The students 
+- **Output**: The student will produce a plant functional trait maps for Europe that can be considered later as a predictor. They have c about Biome classification, IGBP veg types
+- **Data**: Dataset 2 in particular the geographic locations for which vegetation types will be produced in combination with plant occurrences (GBIF) and plant trait data (leaf trait - TRY).
+
+## Tutorial
+
+### Dataset 1 (HH flux data)
+
+#### Variables in a dataframe
+
+- select
+- rename
+
+Let's read in the half-hourly data from the eddy-covariance site CH-Lae again (as we did in Chapter 1) and have a quick look at it. We use the function `read_csv()` from the readr package here for reading the CSV since it's faster than the base-R `read.csv()` and generates a nicely readable output when printing the object.
+```{r}
+library(readr)
+hhdf <- read_csv("data1/FLX_CH-Lae_FLUXNET2015_FULLSET_HH_2004-2014_1-3.csv")
+hhdf
+```
+This was easy. The file is automatically machine-readable without us having to specify additional information, because
+
+- Only one header row, containing the column (variable) names
+- No annoying white spaces in column names
+- No merged cells or alike
+- ...
+
+Print dimensions
+```{r}
+dim(hhdf)
+```
+
+Column names, only first few
+```{r}
+names(hhdf)[1:30]
+```
+
+This dataset is "tidy", meaning that variables are organised by columns, and individual observations (here different points in time) are given by rows.
+
+Select variables.
+Base R by column index (number)
+```{r}
+hhdf[,1:4]
+```
+Base R by column names
+```{r}
+hhdf[,c("TIMESTAMP_START", "TIMESTAMP_END", "TA_F_MDS", "TA_F_MDS_QC")]
+```
+
+Tidyverse. (introduce it briefly)
+```{r}
+library(dplyr)
+select(hhdf, TIMESTAMP_START, TIMESTAMP_END, TA_F_MDS, TA_F_MDS_QC)
+```
+
+#### Time
+
+- lubridate ([link](https://datacarpentry.org/R-ecology-lesson/02-starting-with-data.html#Formatting_Dates))
+
+Weird interpretation of the variables `"TIMESTAMP_START"` and `"TIMESTAMP_END"`.
+```{r}
+typeof(hhdf$TIMESTAMP_START[[1]])
+as.character(hhdf$TIMESTAMP_START[[1]])
+```
+
+Format is: YYYYMMDDhhmm. Use lubridate package to correctly interpret. We're modifying a variable. 
+```{r}
+library(lubridate)
+dates <- ymd_hm(hhdf$TIMESTAMP_START)
+head(dates)
+```
+
+Easy work with dates now
+```{r}
+nextday <- dates + days(1)
+head(nextday)
+```
+
+```{r}
+month_of_year <- month(dates)
+head(month_of_year)
+```
+
+etc.
+
+#### Variable (re-) definition
+
+- mutate
+- pipes
+
+```{r eval=FALSE}
+mutate(hhdf, TIMESTAMP_START = ymd_hm(TIMESTAMP_START))
+```
+
+We've already done several two typical steps of a data science workflow: Selecting variables, modifying variables. The tidyverse offers an intuitive syntax for writing code that is particularly useful to implement workflows....
+
+```{r}
+hhdf %>% 
+  select(TIMESTAMP_START, TIMESTAMP_END, TA_F_MDS, TA_F_MDS_QC) %>% 
+  mutate(TIMESTAMP_START = ymd_hm(TIMESTAMP_START), TIMESTAMP_END = ymd_hm(TIMESTAMP_END))
+```
+
+#### Cleaning (outliers, quality flags, ...) and gapfilling
+
+- filter
+
+Data has quality flags (`"_QC"`). Get good-quality NEE data. Codes are:
+
+0 = measured
+1 = good quality gap-filled
+2 = medium
+3 = poor
+
+Let's take only actually measured or good quality gap-filled data.
+```{r eval=FALSE}
+hhdf %>% 
+  select(TIMESTAMP_START, TIMESTAMP_END, NEE_VUT_REF, NEE_VUT_REF_QC) %>% 
+  filter(NEE_VUT_REF_QC == 0 | NEE_VUT_REF_QC == 1)
+```
+
+This can be written more simply with the `%in%` (... "is element of" ...) as:
+```{r eval=FALSE}
+hhdf %>% 
+  select(TIMESTAMP_START, TIMESTAMP_END, NEE_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
+  filter(NEE_VUT_REF_QC %in% c(0,1))
+```
+
+This removes rows (note the information about number of rows printed). In some cases this is undesired. We can also replace bad-quality NEE values with NA.
+```{r}
+hhdf %>% 
+  select(TIMESTAMP_START, TIMESTAMP_END, NEE_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
+  mutate(NEE_VUT_REF = ifelse(NEE_VUT_REF_QC %in% c(0,1), NEE_VUT_REF, NA))
+```
+
+#### Visualisation
+
+Looking at data is an integral part of data processing. Here we introduce just the very basics. Refer to other resources.
+
+Let's look at cleaned data from 5 consecutive days in July 2007 (1.5.-5.5.2007, random)
+```{r}
+df_to_plot <- hhdf %>% 
+  select(TIMESTAMP_START, TIMESTAMP_END, NEE_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
+  mutate(NEE_VUT_REF = ifelse(NEE_VUT_REF_QC %in% c(0,1), NEE_VUT_REF, NA)) %>% 
+  mutate(TIMESTAMP_START = ymd_hm(TIMESTAMP_START), TIMESTAMP_END = ymd_hm(TIMESTAMP_END)) %>% 
+  filter(year(TIMESTAMP_START)==2007 & month(TIMESTAMP_START)==7 & mday(TIMESTAMP_START) %in% 1:5)
+
+plot(df_to_plot$TIMESTAMP_START, df_to_plot$NEE_VUT_REF, type = "l")
+```
+
+Introduce ggplot briefly
+
+```{r}
+library(ggplot2)
+ggplot(data = df_to_plot, aes(x = TIMESTAMP_START, y = NEE_VUT_REF)) +
+  geom_line()
+```
+
+
+#### Aggregating
+
+- group_by
+- summarise
+
+```{r}
+ddf <- hhdf %>% 
+  mutate(TIMESTAMP_START = ymd_hm(TIMESTAMP_START)) %>% 
+  mutate(date = as_date(TIMESTAMP_START)) %>% 
+  select(TIMESTAMP_START, date, NEE_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
+  group_by(date) %>% 
+  summarise(NEE_VUT_REF = sum(NEE_VUT_REF, na.rm = TRUE))
+```
+
+Plot all days year 2007.
+```{r}
+ddf %>% 
+  filter(year(date)==2007) %>%  # same functions as above can be applied to 'date'
+  ggplot(aes(date, NEE_VUT_REF)) +
+  geom_line()
+  # xlim(ymd("2007-01-01"), ymd("2007-12-31"))
+```
+
+#### Combining: join_
+
+#### purrr
+
+#### purrr and mutate
+
+#### Advanced data vis
+
+#### Tidy data
+
+#### Wide and long table formats: pivont_longer, ...
+
+#### Factors, dimensions
+
+#### Visualise ([link](https://datacarpentry.org/R-ecology-lesson/04-visualization-ggplot2.html))
+  - factors, boxplot
+  - mapping aesthetics: color, shape
+
+#### Flat and nested data frames: tidyr
+
+### Dataset 2 (DD flux data)
+
+### Dataset 3 (Experimental data)
+
+- Read dataset
+
+## Assignment
+
+- Using dataset 1 (HH), plot the mean diurnal cycle of GPP and ET by season (DJF, MAM, JJA, SON). Clean data beforehand to remove XXX.
+- Plot light response curve (GPP vs. PPFD) during the growing season (within 80% of the overall maximum GPP) at half-hourly, daily, weekly and monthly time scales. Use only daytime data.
+- Plot mean growing-season GPP vs. PAR across different sites, colors indicating vegetation type (or aridity)
+

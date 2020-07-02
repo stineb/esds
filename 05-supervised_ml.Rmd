@@ -1,3 +1,0 @@
-# Supervised learning
-
-We have finished a nice book.

@@ -38,7 +38,7 @@ library(tidyverse)
 
 Read data from Laegern site.
 ```{r}
-df_fluxes <- read_csv("./data/FLX_CH-Lae_FLUXNET2015_FULLSET_HH_2004-2014_1-3.csv", ) 
+df_fluxes <- read_csv("./data1/FLX_CH-Lae_FLUXNET2015_FULLSET_HH_2004-2014_1-3.csv", ) 
 ```
 
 Plot something.

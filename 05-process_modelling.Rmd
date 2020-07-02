@@ -1,4 +1,4 @@
-# Model-data fusion
+# Process modelling
 
 ## Exercises
 

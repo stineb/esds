@@ -1,4 +1,4 @@
-# Data scraping and wrangling
+# Data scraping
 
 ## Exercises
 

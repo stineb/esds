@@ -1,0 +1,6 @@
+# Supervised learning: NN
+
+*Josh*
+11.11.2020
+
+NN theory + fake data exercise

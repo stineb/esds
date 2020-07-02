@@ -1,0 +1,4 @@
+# Supervised learning application
+
+*Beni*
+04.11.2020

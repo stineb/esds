@@ -1,0 +1,20 @@
+# Supervised learning basics
+
+*Josh*
+28.10.2020
+
+Theory and fake data exercise
+
+Contents:
+
+- Classification vs. regression
+  - Brief mention of suite of methods (decision trees, random forests, SVMs, neural networks, etc.)
+- Loss. 
+  - Central to most learning algorithms
+  - Example loss functions, e.g., root mean squared error, categorical cross-entropy
+  - Highlight loss with linear regression
+    - y = Wx + b
+    - Find the W and b that minimize loss (this is “learning”)
+    - Gradient descent
+    - Importance of learning rate
+    - Limited to linear problems
