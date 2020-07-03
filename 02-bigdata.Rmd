@@ -21,32 +21,3 @@ We have time series data obtained from multiple sites. A common task is to compl
 
 ### Read multiple files
 
-Find all daily time series data in the `"./data"` directory. Files are identified here by their name, which contains the pattern `"DD"` (for 'daily').
-```{r}
-filelist <- list.files("./data", pattern = "DD")
-```
-
-This returns 19 files for 19 sites. We can read them in at once using a simple loop. Here, we are creating a list of data frames of length 19.
-```{r message=FALSE, eval=FALSE}
-library(readr)
-list_df <- list()
-for (ifil in filelist){
-  list_df[[ifil]] <- read_csv(paste0("./data/", ifil))
-}
-```
-
-In *tidyverse*, this could be done on one line by:
-```{r message=FALSE, eval=FALSE}
-library(purrr)
-list_df <- purrr::map(as.list(filelist), ~read_csv(paste0("./data/", .)))
-## This returns a unnamed list. Let's add names as done above.
-names(list_df) <- filelist
-```
-
-It may be unpractical to have the different dataframes as elements of a list. In fact, the data frames read in here each have similar shapes. I.e., they share the same columns (but differ by their number of rows, and of course, by their data values). This suggests that we can "stack" each dataframes along rows.
-```{r, eval=FALSE}
-library(dplyr)
-df_allsites <- bind_rows(list_df, .id = "siteid")
-```
-
-This creates one single data frame containing all sites' data (>90'000 rows), and adds a column named `"siteid"` that is automatically created by using the names of the list elements of `list_df`.

@@ -46,12 +46,15 @@
 #### Variables in a dataframe
 
 - select
+  - starts_with, ends_with, contains, matches, num_range
 - rename
 
-Let's read in the half-hourly data from the eddy-covariance site CH-Lae again (as we did in Chapter 1) and have a quick look at it. We use the function `read_csv()` from the readr package here for reading the CSV since it's faster than the base-R `read.csv()` and generates a nicely readable output when printing the object.
+[link](https://r4ds.had.co.nz/transform.html#select)
+
+Let's read in the half-hourly data from the eddy-covariance site CH-Lae again (as we did in Chapter 1) and have a quick look at it. We use the function `read_csv()` from the readr package here for reading the CSV since it's faster than the base-R `read.csv()` and generates a nicely readable output when printing the object. More info about base R and tidyverse data reading [here](https://r4ds.had.co.nz/data-import.html).
 ```{r}
 library(readr)
-hhdf <- read_csv("data1/FLX_CH-Lae_FLUXNET2015_FULLSET_HH_2004-2014_1-3.csv")
+hhdf <- read_csv("data_HH/FLX_CH-Lae_FLUXNET2015_FULLSET_HH_2004-2014_1-3.csv")
 hhdf
 ```
 This was easy. The file is automatically machine-readable without us having to specify additional information, because
@@ -93,6 +96,8 @@ select(hhdf, TIMESTAMP_START, TIMESTAMP_END, TA_F_MDS, TA_F_MDS_QC)
 
 - lubridate ([link](https://datacarpentry.org/R-ecology-lesson/02-starting-with-data.html#Formatting_Dates))
 
+[link](https://r4ds.had.co.nz/dates-and-times.html)
+
 Weird interpretation of the variables `"TIMESTAMP_START"` and `"TIMESTAMP_END"`.
 ```{r}
 typeof(hhdf$TIMESTAMP_START[[1]])
@@ -119,10 +124,13 @@ head(month_of_year)
 
 etc.
 
+
 #### Variable (re-) definition
 
 - mutate
-- pipes
+- pipes (`%>%`)
+
+[link](https://r4ds.had.co.nz/transform.html#add-new-variables-with-mutate)
 
 ```{r eval=FALSE}
 mutate(hhdf, TIMESTAMP_START = ymd_hm(TIMESTAMP_START))
@@ -139,6 +147,9 @@ hhdf %>%
 #### Cleaning (outliers, quality flags, ...) and gapfilling
 
 - filter
+- missing values
+
+[link](https://r4ds.had.co.nz/transform.html#filter-rows-with-filter)
 
 Data has quality flags (`"_QC"`). Get good-quality NEE data. Codes are:
 
@@ -150,88 +161,308 @@ Data has quality flags (`"_QC"`). Get good-quality NEE data. Codes are:
 Let's take only actually measured or good quality gap-filled data.
 ```{r eval=FALSE}
 hhdf %>% 
-  select(TIMESTAMP_START, TIMESTAMP_END, NEE_VUT_REF, NEE_VUT_REF_QC) %>% 
+  select(TIMESTAMP_START, TIMESTAMP_END, GPP_NT_VUT_REF, NEE_VUT_REF_QC) %>% 
   filter(NEE_VUT_REF_QC == 0 | NEE_VUT_REF_QC == 1)
 ```
 
 This can be written more simply with the `%in%` (... "is element of" ...) as:
 ```{r eval=FALSE}
 hhdf %>% 
-  select(TIMESTAMP_START, TIMESTAMP_END, NEE_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
+  select(TIMESTAMP_START, TIMESTAMP_END, GPP_NT_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
   filter(NEE_VUT_REF_QC %in% c(0,1))
 ```
 
 This removes rows (note the information about number of rows printed). In some cases this is undesired. We can also replace bad-quality NEE values with NA.
 ```{r}
 hhdf %>% 
-  select(TIMESTAMP_START, TIMESTAMP_END, NEE_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
-  mutate(NEE_VUT_REF = ifelse(NEE_VUT_REF_QC %in% c(0,1), NEE_VUT_REF, NA))
+  select(TIMESTAMP_START, TIMESTAMP_END, GPP_NT_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
+  mutate(GPP_NT_VUT_REF = ifelse(NEE_VUT_REF_QC %in% c(0,1), GPP_NT_VUT_REF, NA))
 ```
 
 #### Visualisation
+
+- simple x-y plot
 
 Looking at data is an integral part of data processing. Here we introduce just the very basics. Refer to other resources.
 
 Let's look at cleaned data from 5 consecutive days in July 2007 (1.5.-5.5.2007, random)
 ```{r}
 df_to_plot <- hhdf %>% 
-  select(TIMESTAMP_START, TIMESTAMP_END, NEE_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
-  mutate(NEE_VUT_REF = ifelse(NEE_VUT_REF_QC %in% c(0,1), NEE_VUT_REF, NA)) %>% 
+  select(TIMESTAMP_START, TIMESTAMP_END, GPP_NT_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
+  mutate(GPP_NT_VUT_REF = ifelse(NEE_VUT_REF_QC %in% c(0,1), GPP_NT_VUT_REF, NA)) %>% 
   mutate(TIMESTAMP_START = ymd_hm(TIMESTAMP_START), TIMESTAMP_END = ymd_hm(TIMESTAMP_END)) %>% 
   filter(year(TIMESTAMP_START)==2007 & month(TIMESTAMP_START)==7 & mday(TIMESTAMP_START) %in% 1:5)
 
-plot(df_to_plot$TIMESTAMP_START, df_to_plot$NEE_VUT_REF, type = "l")
+plot(df_to_plot$TIMESTAMP_START, df_to_plot$GPP_NT_VUT_REF, type = "l")
 ```
 
 Introduce ggplot briefly
 
 ```{r}
 library(ggplot2)
-ggplot(data = df_to_plot, aes(x = TIMESTAMP_START, y = NEE_VUT_REF)) +
+ggplot(data = df_to_plot, aes(x = TIMESTAMP_START, y = GPP_NT_VUT_REF)) +
   geom_line()
 ```
+
+#### Arranging, etc. 
+
+- head, tail
+- arrange
+  - desc()
+- distinct
+- count
+
+Look at the data frame directly
 
 
 #### Aggregating
 
 - group_by
 - summarise
+  - mean, median, sd, quantile
+  - first, last
+  - n_distinct
+  
+[link](https://r4ds.had.co.nz/transform.html#grouped-summaries-with-summarise)
 
 ```{r}
 ddf <- hhdf %>% 
   mutate(TIMESTAMP_START = ymd_hm(TIMESTAMP_START)) %>% 
   mutate(date = as_date(TIMESTAMP_START)) %>% 
-  select(TIMESTAMP_START, date, NEE_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
+  select(TIMESTAMP_START, date, GPP_NT_VUT_REF, NEE_VUT_REF_QC) %>% ## added here again for handy output
   group_by(date) %>% 
-  summarise(NEE_VUT_REF = sum(NEE_VUT_REF, na.rm = TRUE))
+  summarise(GPP_NT_VUT_REF = sum(GPP_NT_VUT_REF, na.rm = TRUE))
 ```
 
-Plot all days year 2007.
+Plot all days in year 2007.
 ```{r}
 ddf %>% 
   filter(year(date)==2007) %>%  # same functions as above can be applied to 'date'
-  ggplot(aes(date, NEE_VUT_REF)) +
+  ggplot(aes(date, GPP_NT_VUT_REF)) +
   geom_line()
-  # xlim(ymd("2007-01-01"), ymd("2007-12-31"))
+  # xlim(ymd("2007-01-01"), ymd("2007-12-31")) # alternative to reducing x axis of plot (not of data)
 ```
 
-#### Combining: join_
+#### Workflow example
 
-#### purrr
+- combining multiple processing steps (filter, summarise) into a function
+- data vis II
+- linear regression `lm`
+- define function
 
-#### purrr and mutate
+xxxxx
+```{r}
+proc_lightresponse <- function(df){
+  
+  df <- df %>% 
+    
+    # reduce to relevant data
+    select(TIMESTAMP_START, GPP_NT_VUT_REF, NEE_VUT_REF_QC, PPFD_IN) %>%
+
+    mutate(TIMESTAMP_START = ymd_hm(TIMESTAMP_START)) %>% 
+    mutate(date = as_date(TIMESTAMP_START)) %>% 
+    # mutate(week = week(date), year = year(date)) %>% 
+    
+    ## -9999 is missing value
+    mutate(PPFD_IN = ifelse(PPFD_IN==-9999, NA, PPFD_IN),
+           GPP_NT_VUT_REF = ifelse(GPP_NT_VUT_REF==-9999, NA, GPP_NT_VUT_REF)) %>% 
+    
+    # # take only actually measured data
+    # mutate(GPP_NT_VUT_REF = ifelse(NEE_VUT_REF_QC == 0, GPP_NT_VUT_REF, NA)) %>%  
+    
+    # # remove data points without PPFD
+    # filter(PPFD_IN != -9999) %>% 
+    
+    # # remove nighttime data (no incoming light)
+    # filter(PPFD_IN > 10) %>%   # not taking 0 here to allow for a small error marging
+
+    # aggregate to daily totals
+    # group_by(year, week) %>% 
+    group_by(date) %>% 
+    summarise(GPP_NT_VUT_REF = sum(GPP_NT_VUT_REF),
+              PPFD_IN = sum(PPFD_IN),
+              n_datapoints = n(),
+              n_ppfd = n(),
+              n_measured = sum(!is.na(PPFD_IN)),
+              n_goodquality = sum(NEE_VUT_REF_QC %in% c(0,1))
+              ) %>% 
+    mutate(f_measured = n_measured / n_datapoints,
+           f_goodquality = n_goodquality / n_datapoints)
+    # filter(f_goodquality == 1.0)
+  
+  return(df)
+}  
+
+df <- hhdf %>%  
+  proc_lightresponse()
+```
+
+```{r}
+df %>%
+  ggplot(aes(x = PPFD_IN, y = GPP_NT_VUT_REF)) +
+  geom_point()
+```
+
+```{r}
+df %>%
+  ggplot(aes(x = PPFD_IN, y = GPP_NT_VUT_REF, color = f_goodquality)) +
+  geom_point() +
+  scale_color_viridis_c(direction = -1)
+```
+
+
+```{r}
+df %>%
+  ggplot(aes(x = PPFD_IN, y = GPP_NT_VUT_REF)) +
+  # geom_hex() +
+  # geom_density_2d_filled()
+  stat_density_2d(
+    geom = "raster",
+    aes(fill = after_stat(density)),
+    contour = FALSE
+    ) +
+  scale_fill_viridis_c()
+```
+
+```{r}
+linmod <- lm(GPP_NT_VUT_REF ~ PPFD_IN, data = df)
+```
+
+
+```{r}
+df %>%
+  ggplot(aes(x = PPFD_IN, y = GPP_NT_VUT_REF)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red")
+```
+
+```{r}
+df %>%
+  mutate(month = as.factor(month(date))) %>% 
+  ggplot(aes(x = PPFD_IN, y = GPP_NT_VUT_REF, color = month)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE) 
+```
+
+We already found a pattern. Actually two: More light -> more GPP. Relationship (sensitivity) depends on the season (here: month).
+
+### Dataset 2 (DD flux data)
+
+#### Frunctional programming
+
+- purrr
+
+Find all daily time series data in the `"./data_DD"` directory. Files are identified here by their name, which contains the pattern `"DD"` (for 'daily').
+```{r}
+filelist <- list.files("./data_DD", pattern = "_FLUXNET2015_FULLSET_DD_", full.names = TRUE)
+```
+
+This returns 36 files for 36 sites. We can read them in at once using a simple loop. Here, we are creating a list of data frames of length 36.
+```{r message=FALSE, eval=FALSE}
+library(readr)
+list_df <- list()
+for (ifil in filelist){
+  list_df[[ifil]] <- read_csv(ifil)
+}
+```
+
+Here is a quick deviation into functional programming. Note that a loop basically consists of two "components": a counter index (here `ifil`), and some statement that is applied at each iteration where the counter index takes a new value. This concept can be generalised further by understanding the counter index as an element of a list and the statement as any function that is "mapped" onto the list of elements. We have arrived at functional programming. The purrr package offers the tools for functional programming in R.
+
+The above loop can be written on one line as:
+```{r message=FALSE}
+library(purrr)
+list_df <- map(as.list(filelist), ~read_csv(.))
+
+## This returns a unnamed list. Let's add names as done above.
+names(list_df) <- filelist
+```
+
+It may be unpractical to have the different dataframes as elements of a list. In fact, the data frames read in here each have similar shapes. I.e., they share the same columns (but differ by their number of rows, and of course, by their data values). This suggests that we can "stack" each dataframes along rows.
+```{r}
+df_allsites <- bind_rows(list_df, .id = "siteid")
+```
+
+#### Strings
+
+- stringr
+
+This creates one single data frame containing all sites' data (>90'000 rows), and adds a column named `"siteid"` that is automatically created by using the names of the list elements of `list_df`. Unfortunately, this contains strings specifying the full paths of the files that were read. We would like to extract the site name from these strings. Fortunately, the file names follow a clear pattern (see: naming your files wisely is more important than you would think at first!). 
+```{r}
+df_allsites$siteid %>% head()
+```
+
+The paths each start with the subdirectory where they are located (`"./data_DD/"`), then `"FLX_"`, and then the site name (the first three entries of the table containing data from all sites are for the site `"BE-Bra"`), and then some more specifications, inluding the years that respective files' data cover. What's the most effective way to extract the site name from all these strings? The stringr R package offers a set of very handy tools to work with strings. Here, we would like to extract the six characters, starting at position 15, and overwrite the values of colulmn `"siteid"` with just the six characters of the site name.
+```{r}
+library(stringr)
+df_allsites %>% 
+  select(1:3) %>%    # select only first three columns for handy output
+  mutate(siteid = str_sub(siteid, start = 15, end = 20))
+```
+
+```{r include=FALSE}
+## behind the scenes
+df_allsites <- df_allsites %>% 
+  mutate(siteid = str_sub(siteid, start = 15, end = 20))
+```
+
+
+#### Combining
+
+- join
+- Relational data
+
+[link](https://r4ds.had.co.nz/relational-data.html#mutating-joins)
+
+Let's get meta data for sites from [Falge et al.](https://daac.ornl.gov/FLUXNET/guides/Fluxnet_site_DB.html). The file `"fluxnet_site_info_all.csv"` is made available in directory `"data_DD"`.
+```{r}
+df_sites <- read_csv("./data_DD/fluxnet_site_info_all.csv")
+df_sites
+```
+
+This contains info for many more sites (844 rows for 844 sites) than we have data for (36). On the other hand, we have data for multiple time steps for each of our 36 sites. Although these two tables contain different types of information (site-level vs. temporal), the two are related. The key variable that combines the two is the standard site ID that is commonly used for FLUXNET sites. In the sites table (`df_sites`), the key is called `fluxnetid`. In the temporal dataset `df_allsites`, we have created the site key column `siteid` ourselves. 
+
+Now, we would like to combine (or merge, or join) the two tables, To do this, we have to identify a key variable, present in both datasets, and by which the two are combined. This requires us to rename it in one.
+```{r}
+df_sites %>% 
+  select(-siteid) %>%   # remove this variable because it doesn't contain the name we want
+  rename(siteid = fluxnetid) %>% 
+  right_join(df_allsites,
+             by = "siteid") %>% 
+  
+  ## perform some variable renaming for our own taste
+  rename(lon = longitude,
+         lat = latitude,
+         elv = gtopo30_elevation
+  )
+```
+
+#### Functional programming II
+
+- mutate combined with purrr
 
 #### Advanced data vis
+
+- ~color
+- facet_wrap
+- factors (boxplot)
+- histogram, density
+- alpha, density, ... [link](https://ggplot2-book.org/statistical-summaries.html#overplotting)
 
 #### Tidy data
 
 #### Wide and long table formats: pivont_longer, ...
 
+[link](https://r-bootcamp.netlify.app/chapter4)
+[link](https://r4ds.had.co.nz/tidy-data.html)
+
 #### Factors, dimensions
 
-#### Visualise ([link](https://datacarpentry.org/R-ecology-lesson/04-visualization-ggplot2.html))
+#### Visualise
+
   - factors, boxplot
   - mapping aesthetics: color, shape
+
+[link](https://datacarpentry.org/R-ecology-lesson/04-visualization-ggplot2.html)
 
 #### Flat and nested data frames: tidyr
 
@@ -244,6 +475,6 @@ ddf %>%
 ## Assignment
 
 - Using dataset 1 (HH), plot the mean diurnal cycle of GPP and ET by season (DJF, MAM, JJA, SON). Clean data beforehand to remove XXX.
-- Plot light response curve (GPP vs. PPFD) during the growing season (within 80% of the overall maximum GPP) at half-hourly, daily, weekly and monthly time scales. Use only daytime data.
+- Using dataset 1 (HH), visualise the light response (GPP vs. PPFD) during the growing season (within 80% of the overall maximum GPP) at half-hourly, daily, weekly and monthly time scales. Use only daytime data.
 - Plot mean growing-season GPP vs. PAR across different sites, colors indicating vegetation type (or aridity)
 
