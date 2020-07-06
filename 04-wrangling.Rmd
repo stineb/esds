@@ -268,6 +268,10 @@ ddf %>%
 
 - combining multiple processing steps (filter, summarise) into a function
 - data vis II
+  - ~color
+  - overplotting density plot
+  - smoothing line
+  - factor
 - linear regression `lm`
 - define function
 
@@ -382,9 +386,6 @@ The above loop can be written on one line as:
 ```{r message=FALSE}
 library(purrr)
 list_df <- map(as.list(vec_files), ~read_csv(.))
-
-## This returns a unnamed list. Let's add names as done above.
-names(list_df) <- vec_files
 ```
 
 It may be unpractical to have the different dataframes as elements of a list. In fact, the data frames read in here each have similar shapes. I.e., they share the same columns (but differ by their number of rows, and of course, by their data values). This suggests that we can "stack" each dataframes along rows.
@@ -441,7 +442,7 @@ This contains info for many more sites (844 rows for 844 sites) than we have dat
 
 Now, we would like to combine (or merge, or join) the two tables, To do this, we have to identify a key variable, present in both datasets, and by which the two are combined. This requires us to rename it in one.
 ```{r}
-df_sites %>% 
+df_allsites <- df_sites %>% 
   select(-siteid) %>%   # remove this variable because it doesn't contain the name we want
   rename(siteid = fluxnetid) %>% 
   right_join(df_allsites,
@@ -465,6 +466,14 @@ Functions can be applied to any list. Above, the list we used the vector or file
 list_linmod <- map(list_df, ~lm(GPP_NT_VUT_REF ~ PPFD_IN, data = .))
 ```
 This returns a list of linear model objects (returned objects of the `lm()` function call). 
+
+We can spin this further and apply (or map) the `summary()` function to the lm objects to get a list of useful statistics and metrics, and then further extract the element `r.squared"` from that list as:
+```{r}
+list_linmod %>% 
+  map(summary) %>%              # applyting a function
+  map_dbl("r.squared") %>%      # extracting from a named list
+  head() # for handy output
+```
 
 When writing code for an analysis, it's useful, if not essential, to understand the objects we're working with and make sense of the results of simple `print <object>` statements. Data frames are particularly handy as they provide an organisation of data that is particularly intuitive and follows the tidy paradigm (variables along columns, observations along rows, values in cells). We've encountered such data frames above. Here, we're dealing with a list of linear model objects. Can such a list fit into the tidy paradigm? 
 
@@ -503,13 +512,31 @@ df_allsites %>%
   mutate(linmod = map(data, ~lm(GPP_NT_VUT_REF ~ PPFD_IN, data = .)))
 ```
 
+Again, this can be spun further to 
+```{r}
+df_allsites <- df_allsites %>% 
+  group_by(siteid) %>% 
+  nest() %>% 
+  mutate(linmod = map(data, ~lm(GPP_NT_VUT_REF ~ PPFD_IN, data = .))) %>% 
+  mutate(summ = map(linmod, ~summary(.))) %>% 
+  mutate(rsq = map_dbl(summ, "r.squared")) %>% 
+  
+  ## to arrange output, with highest r-squared on top
+  arrange(desc(rsq))
+```
+
+
 #### Advanced data vis
 
-- ~color
 - facet_wrap
 - factors (boxplot)
 - histogram, density
 - alpha, density, ... [link](https://ggplot2-book.org/statistical-summaries.html#overplotting)
+
+gpp vs. ppfd by site (facet wrap)
+histogram, density of daily gpp
+factor - boxplot (gpp by vegetation type)
+rsq by evergreen or not
 
 #### Tidy data
 
@@ -520,20 +547,11 @@ df_allsites %>%
 
 #### Factors, dimensions
 
-#### Visualise
-
-  - factors, boxplot
-  - mapping aesthetics: color, shape
-
 [link](https://datacarpentry.org/R-ecology-lesson/04-visualization-ggplot2.html)
 
 #### Flat and nested data frames: tidyr
 
-### Dataset 2 (DD flux data)
 
-### Dataset 3 (Experimental data)
-
-- Read dataset
 
 ## Assignment
 
