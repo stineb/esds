@@ -512,7 +512,7 @@ df_allsites %>%
   mutate(linmod = map(data, ~lm(GPP_NT_VUT_REF ~ PPFD_IN, data = .)))
 ```
 
-Again, this can be spun further to 
+Again, this can be spun further, with the same steps as done above, to: 
 ```{r}
 df_allsites <- df_allsites %>% 
   group_by(siteid) %>% 
