@@ -38,12 +38,12 @@ library(tidyverse)
 
 Read data from Laegern site.
 ```{r}
-df_fluxes <- read_csv("./data1/FLX_CH-Lae_FLUXNET2015_FULLSET_HH_2004-2014_1-3.csv", ) 
+df_fluxes <- read_csv("./data_DD/FLX_CH-Lae_FLUXNET2015_FULLSET_DD_2004-2014_1-3.csv" ) 
 ```
 
 Plot something.
 ```{r}
-ggplot(data = slice(df_fluxes, 1:1000), aes(x = TIMESTAMP_START, NEE_VUT_REF)) +
+ggplot(data = slice(df_fluxes, 1:1000), aes(x = TIMESTAMP, NEE_VUT_REF)) +
   geom_line()
 ```
 

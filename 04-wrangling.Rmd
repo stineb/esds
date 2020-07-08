@@ -385,8 +385,11 @@ Here is a quick deviation into functional programming. Note that a loop basicall
 The above loop can be written on one line as:
 ```{r message=FALSE}
 library(purrr)
-list_df <- map(as.list(vec_files), ~read_csv(.))
+list_df <- map(as.list(vec_files), ~read_csv(., na = "-9999"))
+names(list_df) <- vec_files
 ```
+
+Note NA value specified.
 
 It may be unpractical to have the different dataframes as elements of a list. In fact, the data frames read in here each have similar shapes. I.e., they share the same columns (but differ by their number of rows, and of course, by their data values). This suggests that we can "stack" each dataframes along rows.
 ```{r}
@@ -424,37 +427,6 @@ df_allsites <- df_allsites %>%
 df_allsites
 ```
 
-
-#### Combining
-
-- join
-- Relational data
-
-[link](https://r4ds.had.co.nz/relational-data.html#mutating-joins)
-
-Let's get meta data for sites from [Falge et al.](https://daac.ornl.gov/FLUXNET/guides/Fluxnet_site_DB.html). The file `"fluxnet_site_info_all.csv"` is made available in directory `"data_DD"`.
-```{r}
-df_sites <- read_csv("./data_DD/fluxnet_site_info_all.csv")
-df_sites
-```
-
-This contains info for many more sites (844 rows for 844 sites) than we have data for (36). On the other hand, we have data for multiple time steps for each of our 36 sites. Although these two tables contain different types of information (site-level vs. temporal), the two are related. The key variable that combines the two is the standard site ID that is commonly used for FLUXNET sites. In the sites table (`df_sites`), the key is called `fluxnetid`. In the temporal dataset `df_allsites`, we have created the site key column `siteid` ourselves. 
-
-Now, we would like to combine (or merge, or join) the two tables, To do this, we have to identify a key variable, present in both datasets, and by which the two are combined. This requires us to rename it in one.
-```{r}
-df_allsites <- df_sites %>% 
-  select(-siteid) %>%   # remove this variable because it doesn't contain the name we want
-  rename(siteid = fluxnetid) %>% 
-  right_join(df_allsites,
-             by = "siteid") %>% 
-  
-  ## perform some variable renaming for our own taste
-  rename(lon = longitude,
-         lat = latitude,
-         elv = gtopo30_elevation
-  )
-```
-
 #### Functional programming II
 
 - map
@@ -463,8 +435,45 @@ df_allsites <- df_sites %>%
 
 Functions can be applied to any list. Above, the list we used the vector or file paths and converted it into a list and then applied a function (`read_csv()`) to that list using `purrr::map()`. The output was again a list (`list_df`). Because lists can consist of any types of objects, this is a powerful approach to "iterating" over list elements that can be used for all sorts of tasks.  The following takes the returned list of data frames containing daily data, and fits a linear regression model of GPP versus the incoming photosynthetic photon flux density (PPFD) to each sites' daily data.
 ```{r}
+list_linmod <- try( map(list_df, ~lm(GPP_NT_VUT_REF ~ PPFD_IN, data = .)) )
+```
+
+Some sites have no non-NA data for PPFD_IN or GPP_NT_VUT_REF. 
+```{r}
+get_n_ppfd <- function(df){sum(!is.na(df$PPFD_IN))}
+get_n_gpp  <- function(df){sum(!is.na(df$GPP_NT_VUT_REF))}
+
+list_n_ppfd <- map_int(list_df, ~get_n_ppfd(.))    # map_int returns not a list, but automatically a vector or integers
+idx_zero_ppfd <- which(list_n_ppfd == 0)
+
+list_n_gpp <- map_int(list_df, ~get_n_gpp(.))    # map_int returns not a list, but automatically a vector or integers
+idx_zero_gpp <- which(list_n_gpp == 0)
+```
+
+The following files have no PPFD data:
+```{r}
+names(list_df)[idx_zero_ppfd]
+```
+
+The following files have no GPP data:
+```{r}
+names(list_df)[idx_zero_gpp]
+```
+
+Let's drop them for all further analyses.
+```{r}
+list_df <- list_df[-c(idx_zero_ppfd, idx_zero_gpp)]
+vec_sites <- vec_sites[-c(idx_zero_ppfd, idx_zero_gpp)]
+df_allsites <- df_allsites %>% 
+  filter(siteid %in% vec_sites)
+```
+
+And attempt to get the linear models by sites again.
+```{r}
 list_linmod <- map(list_df, ~lm(GPP_NT_VUT_REF ~ PPFD_IN, data = .))
 ```
+Ok.
+
 This returns a list of linear model objects (returned objects of the `lm()` function call). 
 
 We can spin this further and apply (or map) the `summary()` function to the lm objects to get a list of useful statistics and metrics, and then further extract the element `r.squared"` from that list as:
@@ -525,6 +534,36 @@ df_allsites <- df_allsites %>%
   arrange(desc(rsq))
 ```
 
+#### Combining
+
+- join
+- Relational data
+
+[link](https://r4ds.had.co.nz/relational-data.html#mutating-joins)
+
+Let's get meta data for sites from [Falge et al.](https://daac.ornl.gov/FLUXNET/guides/Fluxnet_site_DB.html). The file `"fluxnet_site_info_all.csv"` is made available in directory `"data_DD"`.
+```{r}
+df_sites <- read_csv("./data_DD/fluxnet_site_info_all.csv")
+df_sites
+```
+
+This contains info for many more sites (844 rows for 844 sites) than we have data for (36). On the other hand, we have data for multiple time steps for each of our 36 sites. Although these two tables contain different types of information (site-level vs. temporal), the two are related. The key variable that combines the two is the standard site ID that is commonly used for FLUXNET sites. In the sites table (`df_sites`), the key is called `fluxnetid`. In the temporal dataset `df_allsites`, we have created the site key column `siteid` ourselves. 
+
+Now, we would like to combine (or merge, or join) the two tables, To do this, we have to identify a key variable, present in both datasets, and by which the two are combined. This requires us to rename it in one.
+```{r}
+df_allsites <- df_sites %>% 
+  select(-siteid) %>%   # remove this variable because it doesn't contain the name we want
+  rename(siteid = fluxnetid) %>% 
+  right_join(df_allsites,
+             by = "siteid") %>% 
+  
+  ## perform some variable renaming for our own taste
+  rename(lon = longitude,
+         lat = latitude,
+         elv = gtopo30_elevation
+  )
+```
+
 
 #### Advanced data vis
 
@@ -534,11 +573,47 @@ df_allsites <- df_allsites %>%
 - alpha, density, ... [link](https://ggplot2-book.org/statistical-summaries.html#overplotting)
 
 gpp vs. ppfd by site (facet wrap)
+Needs flat dataframe again.
+
+```{r}
+df_allsites %>% 
+  unnest(data) %>% 
+  ggplot(aes(x = PPFD_IN, y = GPP_NT_VUT_REF)) +
+  geom_point(alpha = 0.1) +
+  facet_wrap(~siteid)
+```
+
 histogram, density of daily gpp
+```{r}
+df_allsites %>% 
+  unnest(data) %>% 
+  ggplot(aes(x = GPP_NT_VUT_REF, y = ..density..)) +
+  geom_histogram() +
+  geom_density(color = "red")
+```
+
 factor - boxplot (gpp by vegetation type)
+```{r}
+df_allsites %>% 
+  unnest(data) %>% 
+  ggplot(aes(y = GPP_NT_VUT_REF, x = igbp_land_use)) +
+  geom_boxplot() +
+  coord_flip()
+```
+
 rsq by evergreen or not
+```{r}
+df_allsites %>% 
+  mutate(evergreen = stringr::str_detect(lai_fpar, "Evergreen")) %>% 
+  ggplot(aes(y = rsq, x = evergreen)) +
+  geom_boxplot()
+```
 
 #### Tidy data
+
+Download data from Groenigen et al., 2014:
+
+
 
 #### Wide and long table formats: pivont_longer, ...
 
