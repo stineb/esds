@@ -8,23 +8,79 @@
 
 ## Contents
 
-- Variables in a dataframe: select, rename
-- Time: lubridate ([link](https://datacarpentry.org/R-ecology-lesson/02-starting-with-data.html#Formatting_Dates))
-- Variable (re-) definition: mutate
-- Aggregating: group_by, summarise, count, arrange
-- Cleaning (outliers, quality flags, ...) and gapfilling: filter
-- Combining: join_
-- Workflows: piping
-- purrr
-- purrr and mutate
-- Advanced data vis
+- Variables in a dataframe
+	- `select`
+	  - `starts_with`, `ends_with`, `contains`, `matches`, `num_range`
+	- `rename`
+
+- Time objects
+	- lubridate ([link](https://datacarpentry.org/R-ecology-lesson/02-starting-with-data.html#Formatting_Dates))
+
+- Variable (re-) definition
+	- `mutate`
+	- pipes (`%>%`)
+
+- Cleaning (outliers, quality flags, ...) and gapfilling
+	- `filter`
+	- missing values
+
+- Data visualisation I	
+	- simple x-y plot
+	- ggplot
+
+- Aggregating	
+	- `group_by`
+	- `summarise`
+
+- Workflow example	
+	- combining multiple processing steps (filter, summarise) into a function
+	- data visualisation II
+	  - ~color
+	  - overplotting, density plot
+	  - smoothing line
+
+- Functional programming I
+	- `purrr`::map
+
+- Strings
+	- stringr
+
+- Functional programming II
+	- `map_int`, `map_dbl`
+	- nested dataframes, `nest`
+	- combine `mutate` and `map`
+
+- Combining
+	- relational data
+	- `join`
+
+- Data visualisation III
+	- `facet_wrap`
+	- factors,` boxplot`
+	- histogram, density
+
 - Tidy data
-- Wide and long table formats: pivont_longer, ...
-- Factors, dimensions
-- Visualise ([link](https://datacarpentry.org/R-ecology-lesson/04-visualization-ggplot2.html))
-  - factors, boxplot
-  - mapping aesthetics: color, shape
-- Flat and nested data frames: tidyr
+	- Motivation and criteria for "tidy" data
+	- Factors and "dimensions" in a dataset
+	- wide vs. long; `pivot_longer`, `pivot_wider`
+	
+<!-- - Variables in a dataframe: select, rename -->
+<!-- - Time: lubridate ([link](https://datacarpentry.org/R-ecology-lesson/02-starting-with-data.html#Formatting_Dates)) -->
+<!-- - Variable (re-) definition: mutate -->
+<!-- - Aggregating: group_by, summarise, count, arrange -->
+<!-- - Cleaning (outliers, quality flags, ...) and gapfilling: filter -->
+<!-- - Combining: join_ -->
+<!-- - Workflows: piping -->
+<!-- - purrr -->
+<!-- - purrr and mutate -->
+<!-- - Advanced data vis -->
+<!-- - Tidy data -->
+<!-- - Wide and long table formats: pivont_longer, ... -->
+<!-- - Factors, dimensions -->
+<!-- - Visualise ([link](https://datacarpentry.org/R-ecology-lesson/04-visualization-ggplot2.html)) -->
+<!--   - factors, boxplot -->
+<!--   - mapping aesthetics: color, shape -->
+<!-- - Flat and nested data frames: tidyr -->
 
 ## Prerequisites
 
@@ -114,7 +170,7 @@ Note that the selection criteria are evaluated in the order we write them in the
 
 Complete reference for selecting variables is [here](https://dplyr.tidyverse.org/reference/select.html).
 
-#### Time
+#### Time objects
 
 - lubridate ([link](https://datacarpentry.org/R-ecology-lesson/02-starting-with-data.html#Formatting_Dates))
 
@@ -167,7 +223,7 @@ hhdf <- hhdf %>%
   mutate(TIMESTAMP_START = ymd_hm(TIMESTAMP_START), TIMESTAMP_END = ymd_hm(TIMESTAMP_END))
 ```
 
-#### Cleaning (outliers, quality flags, ...) and gapfilling
+#### Cleaning and gapfilling
 
 - filter
 - missing values
@@ -208,7 +264,7 @@ hhdf <- hhdf %>%
   mutate_at(vars(-starts_with("TIMESTAMP_")), replace_na)
 ```
 
-#### Visualisation
+#### Data visualisation I
 
 - simple x-y plot
 
@@ -227,25 +283,11 @@ ggplot(data = hhdf, aes(x = TIMESTAMP_START, y = GPP_NT_VUT_REF)) +
   geom_line()
 ```
 
-#### Arranging, etc. 
-
-- head, tail
-- arrange
-  - desc()
-- distinct
-- count
-
-Look at the data frame directly
-
-
 #### Aggregating
 
 - group_by
 - summarise
-  - mean, median, sd, quantile
-  - first, last
-  - n_distinct
-  
+
 [link](https://r4ds.had.co.nz/transform.html#grouped-summaries-with-summarise)
 
 ```{r}
